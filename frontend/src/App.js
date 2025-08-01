@@ -22,6 +22,7 @@ function App() {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState(null);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('setup');
 
   const protocols = [
@@ -42,6 +43,7 @@ function App() {
       setModels(response.data);
     } catch (error) {
       console.error('Failed to fetch models:', error);
+      setError('Failed to load models');
     }
   };
 
@@ -56,6 +58,7 @@ function App() {
 
   const createSession = async () => {
     try {
+      setError(null);
       const sessionData = {
         host_llm: hostLLM,
         target_llm: targetLLM,
@@ -68,6 +71,7 @@ function App() {
       setActiveTab('communicate');
     } catch (error) {
       console.error('Failed to create session:', error);
+      setError('Failed to create session');
     }
   };
 
@@ -75,6 +79,9 @@ function App() {
     if (!currentSession || !query.trim()) return;
     
     setIsExtracting(true);
+    setError(null);
+    setResult(null);
+    
     try {
       const response = await axios.post(`${API}/extract`, {
         session_id: currentSession.id,
@@ -86,7 +93,18 @@ function App() {
       setActiveTab('results');
     } catch (error) {
       console.error('Extraction failed:', error);
-      setResult({ error: 'Extraction failed. Please try again.' });
+      
+      // Handle different error types
+      if (error.response?.status === 429) {
+        setError('API quota exceeded. Please check your OpenAI billing plan or try again later.');
+      } else if (error.response?.status === 401) {
+        setError('API authentication failed. Please check your API keys.');
+      } else if (error.response?.status === 400 && error.response?.data?.detail?.includes('only OpenAI')) {
+        setError(error.response.data.detail);
+      } else {
+        setError(error.response?.data?.detail || 'Extraction failed. Please try again.');
+      }
+      
     } finally {
       setIsExtracting(false);
     }

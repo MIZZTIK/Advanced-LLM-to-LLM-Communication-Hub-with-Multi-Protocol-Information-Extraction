@@ -249,6 +249,105 @@ function App() {
 
           {/* Setup Tab */}
           <TabsContent value="setup" className="space-y-8">
+            {/* API Keys Configuration */}
+            <Card className="p-6 backdrop-blur-sm bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Key className="w-5 h-5 text-yellow-400" />
+                  API Keys Configuration
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowApiKeys(!showApiKeys)}
+                  className="border-slate-600 text-slate-300 hover:text-white"
+                >
+                  {showApiKeys ? (
+                    <>
+                      <Lock className="w-4 h-4 mr-2" />
+                      Hide Keys
+                    </>
+                  ) : (
+                    <>
+                      <Unlock className="w-4 h-4 mr-2" />
+                      Show Keys
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="text-sm text-slate-300 mb-2 block font-medium">
+                    OpenAI API Key
+                  </label>
+                  <input
+                    type={showApiKeys ? "text" : "password"}
+                    placeholder="sk-proj-..."
+                    value={apiKeys.openai}
+                    onChange={(e) => setApiKeys({...apiKeys, openai: e.target.value})}
+                    className="w-full p-3 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:outline-none"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm text-slate-300 mb-2 block font-medium">
+                    Anthropic API Key
+                  </label>
+                  <input
+                    type={showApiKeys ? "text" : "password"}
+                    placeholder="sk-ant-..."
+                    value={apiKeys.anthropic}
+                    onChange={(e) => setApiKeys({...apiKeys, anthropic: e.target.value})}
+                    className="w-full p-3 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:outline-none"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm text-slate-300 mb-2 block font-medium">
+                    Gemini API Key
+                  </label>
+                  <input
+                    type={showApiKeys ? "text" : "password"}
+                    placeholder="AI..."
+                    value={apiKeys.gemini}
+                    onChange={(e) => setApiKeys({...apiKeys, gemini: e.target.value})}
+                    className="w-full p-3 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+              
+              <div className="bg-blue-900/30 border border-blue-700 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Key className="w-5 h-5 text-blue-400 mt-0.5" />
+                  <div>
+                    <h4 className="text-blue-200 font-semibold mb-2">How to get API Keys:</h4>
+                    <ul className="text-blue-300 text-sm space-y-1">
+                      <li><strong>OpenAI:</strong> Visit <a href="https://platform.openai.com/api-keys" target="_blank" className="underline hover:text-blue-200">platform.openai.com/api-keys</a></li>
+                      <li><strong>Anthropic:</strong> Visit <a href="https://console.anthropic.com/" target="_blank" className="underline hover:text-blue-200">console.anthropic.com</a></li>
+                      <li><strong>Gemini:</strong> Visit <a href="https://makersuite.google.com/app/apikey" target="_blank" className="underline hover:text-blue-200">makersuite.google.com/app/apikey</a></li>
+                    </ul>
+                    <p className="text-blue-300 text-sm mt-2">
+                      <strong>Note:</strong> Your API keys are only stored in your browser session and sent securely to the server for LLM communication.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Error Display */}
+            {error && (
+              <Card className="p-4 backdrop-blur-sm bg-gradient-to-br from-red-900/80 to-red-800/80 border-red-700">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                  <div>
+                    <h4 className="text-red-200 font-semibold">Configuration Error</h4>
+                    <p className="text-red-300 text-sm">{error}</p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <ModelSelector
                 title="Host LLM (Information Extractor)"

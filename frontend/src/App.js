@@ -279,6 +279,19 @@ function App() {
           <TabsContent value="communicate" className="space-y-6">
             {currentSession ? (
               <div className="space-y-6">
+                {/* Error Display */}
+                {error && (
+                  <Card className="p-4 backdrop-blur-sm bg-gradient-to-br from-red-900/80 to-red-800/80 border-red-700">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="w-5 h-5 text-red-400" />
+                      <div>
+                        <h4 className="text-red-200 font-semibold">Error</h4>
+                        <p className="text-red-300 text-sm">{error}</p>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+                
                 <Card className="p-6 backdrop-blur-sm bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700">
                   <h3 className="text-lg font-semibold text-white mb-4">Active Communication Session</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -305,6 +318,17 @@ function App() {
                     onChange={(e) => setQuery(e.target.value)}
                     className="min-h-32 bg-slate-800 border-slate-600 text-white resize-none focus:border-blue-400"
                   />
+                  
+                  {/* OpenAI Only Warning */}
+                  <div className="mt-4 p-3 bg-amber-900/30 border border-amber-700 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-400" />
+                      <p className="text-amber-200 text-sm">
+                        <strong>Note:</strong> Currently only OpenAI models are supported. Please ensure both Host and Target LLMs are set to OpenAI models.
+                      </p>
+                    </div>
+                  </div>
+                  
                   <Button 
                     onClick={extractInformation}
                     disabled={!query.trim() || isExtracting}

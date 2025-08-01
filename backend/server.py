@@ -324,13 +324,14 @@ My limitations include:
         if not os.environ.get('OPENAI_API_KEY'):
             raise HTTPException(status_code=400, detail="OpenAI API key not configured")
         
-        # Extract information
+        # Extract information with API keys
         result = await llm_comm.extract_information(
             host_llm=session_obj.host_llm,
             target_llm=session_obj.target_llm,
             query=extraction.query,
             protocol=protocol,
-            session_id=extraction.session_id
+            session_id=extraction.session_id,
+            api_keys=session_obj.api_keys
         )
         
         # Update session with results

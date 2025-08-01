@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,9 +6,12 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime
+import json
+import asyncio
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 
 ROOT_DIR = Path(__file__).parent
@@ -35,10 +38,222 @@ class StatusCheck(BaseModel):
 class StatusCheckCreate(BaseModel):
     client_name: str
 
+class LLMModel(BaseModel):
+    provider: str  # "openai", "anthropic", "gemini"
+    model_name: str
+    display_name: str
+
+class CommunicationSession(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    host_llm: LLMModel
+    target_llm: LLMModel
+    protocol: str  # "mcp", "gibberlink", "droidspeak", "natural"
+    status: str = "active"  # "active", "completed", "failed"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    messages: List[Dict[str, Any]] = []
+    extraction_results: Dict[str, Any] = {}
+
+class Message(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str
+    sender: str  # "host" or "target"
+    content: str
+    protocol: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    metadata: Dict[str, Any] = {}
+
+class SessionCreate(BaseModel):
+    host_llm: LLMModel
+    target_llm: LLMModel
+    protocol: str = "mcp"
+
+class ExtractionQuery(BaseModel):
+    session_id: str
+    query: str
+    protocol: Optional[str] = None
+
+# Available LLM models
+AVAILABLE_MODELS = {
+    "openai": [
+        {"model_name": "gpt-4o", "display_name": "GPT-4o"},
+        {"model_name": "gpt-4.1", "display_name": "GPT-4.1"},
+        {"model_name": "gpt-4o-mini", "display_name": "GPT-4o Mini"},
+        {"model_name": "o1", "display_name": "o1"},
+        {"model_name": "o1-mini", "display_name": "o1 Mini"},
+    ],
+    "anthropic": [
+        {"model_name": "claude-sonnet-4-20250514", "display_name": "Claude Sonnet 4"},
+        {"model_name": "claude-opus-4-20250514", "display_name": "Claude Opus 4"},
+        {"model_name": "claude-3-5-sonnet-20241022", "display_name": "Claude 3.5 Sonnet"},
+    ],
+    "gemini": [
+        {"model_name": "gemini-2.0-flash", "display_name": "Gemini 2.0 Flash"},
+        {"model_name": "gemini-1.5-pro", "display_name": "Gemini 1.5 Pro"},
+    ]
+}
+
+class LLMCommunicator:
+    def __init__(self):
+        self.api_key = os.environ.get('OPENAI_API_KEY')
+    
+    async def create_llm_instance(self, llm_model: LLMModel, session_id: str, system_message: str):
+        """Create a new LLM chat instance"""
+        chat = LlmChat(
+            api_key=self.api_key,
+            session_id=session_id,
+            system_message=system_message
+        ).with_model(llm_model.provider, llm_model.model_name)
+        return chat
+    
+    async def send_message_mcp(self, chat_instance, content: str):
+        """Send message using MCP protocol (structured JSON)"""
+        mcp_message = {
+            "protocol": "mcp",
+            "type": "query",
+            "content": content,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        user_message = UserMessage(text=f"MCP Protocol Message: {json.dumps(mcp_message)}")
+        response = await chat_instance.send_message(user_message)
+        return response
+    
+    async def send_message_gibberlink(self, chat_instance, content: str):
+        """Send message using GibberLink protocol (compressed semantic)"""
+        # Compress the message semantically
+        compressed_query = f"[GIBBER:{len(content)}:{hash(content) % 1000}] {content[:50]}..."
+        
+        user_message = UserMessage(text=f"GibberLink compressed query: {compressed_query}")
+        response = await chat_instance.send_message(user_message)
+        return response
+    
+    async def send_message_droidspeak(self, chat_instance, content: str):
+        """Send message using DroidSpeak protocol (binary-like efficient)"""
+        # Convert to efficient binary-like representation
+        binary_rep = ''.join(format(ord(c), '08b') for c in content[:20])  # First 20 chars to binary
+        droid_code = f"DROID[{len(binary_rep)}]:{binary_rep}"
+        
+        user_message = UserMessage(text=f"DroidSpeak protocol: {droid_code} | Query: {content}")
+        response = await chat_instance.send_message(user_message)
+        return response
+    
+    async def send_message_natural(self, chat_instance, content: str):
+        """Send message using natural language"""
+        user_message = UserMessage(text=content)
+        response = await chat_instance.send_message(user_message)
+        return response
+    
+    async def extract_information(self, host_llm: LLMModel, target_llm: LLMModel, query: str, protocol: str, session_id: str):
+        """Extract information from target LLM using specified protocol"""
+        
+        # Create system messages for different roles
+        host_system = f"You are a Host LLM communicating with a Target LLM to extract information. Use {protocol} protocol for communication. Be systematic and thorough in your information extraction."
+        target_system = f"You are a Target LLM. Respond to queries from the Host LLM using {protocol} protocol. Provide detailed and accurate information."
+        
+        # Create LLM instances
+        host_chat = await self.create_llm_instance(host_llm, f"{session_id}_host", host_system)
+        target_chat = await self.create_llm_instance(target_llm, f"{session_id}_target", target_system)
+        
+        # Send query based on protocol
+        protocol_methods = {
+            "mcp": self.send_message_mcp,
+            "gibberlink": self.send_message_gibberlink,
+            "droidspeak": self.send_message_droidspeak,
+            "natural": self.send_message_natural
+        }
+        
+        if protocol not in protocol_methods:
+            raise HTTPException(status_code=400, detail="Invalid protocol")
+        
+        # Host sends query to target
+        target_response = await protocol_methods[protocol](target_chat, query)
+        
+        # Host analyzes the response
+        analysis_query = f"Analyze this response from the target LLM and extract key information: {target_response}"
+        host_analysis = await self.send_message_natural(host_chat, analysis_query)
+        
+        return {
+            "query": query,
+            "target_response": target_response,
+            "host_analysis": host_analysis,
+            "protocol_used": protocol
+        }
+
+# Initialize communicator
+llm_comm = LLMCommunicator()
+
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "LLM Communication Hub Active"}
+
+@api_router.get("/models")
+async def get_available_models():
+    """Get all available LLM models"""
+    return AVAILABLE_MODELS
+
+@api_router.post("/session", response_model=CommunicationSession)
+async def create_communication_session(session_data: SessionCreate):
+    """Create a new LLM communication session"""
+    session = CommunicationSession(
+        host_llm=session_data.host_llm,
+        target_llm=session_data.target_llm,
+        protocol=session_data.protocol
+    )
+    
+    # Store in database
+    await db.communication_sessions.insert_one(session.dict())
+    return session
+
+@api_router.get("/sessions", response_model=List[CommunicationSession])
+async def get_sessions():
+    """Get all communication sessions"""
+    sessions = await db.communication_sessions.find().to_list(100)
+    return [CommunicationSession(**session) for session in sessions]
+
+@api_router.get("/session/{session_id}", response_model=CommunicationSession)
+async def get_session(session_id: str):
+    """Get specific session details"""
+    session = await db.communication_sessions.find_one({"id": session_id})
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return CommunicationSession(**session)
+
+@api_router.post("/extract")
+async def extract_information(extraction: ExtractionQuery):
+    """Extract information using LLM-to-LLM communication"""
+    
+    # Get session details
+    session = await db.communication_sessions.find_one({"id": extraction.session_id})
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session_obj = CommunicationSession(**session)
+    
+    # Use session protocol if not specified
+    protocol = extraction.protocol or session_obj.protocol
+    
+    try:
+        # Extract information
+        result = await llm_comm.extract_information(
+            host_llm=session_obj.host_llm,
+            target_llm=session_obj.target_llm,
+            query=extraction.query,
+            protocol=protocol,
+            session_id=extraction.session_id
+        )
+        
+        # Update session with results
+        await db.communication_sessions.update_one(
+            {"id": extraction.session_id},
+            {"$push": {"messages": result}, "$set": {"extraction_results": result}}
+        )
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Extraction failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):

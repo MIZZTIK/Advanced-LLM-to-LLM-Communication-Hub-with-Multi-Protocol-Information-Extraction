@@ -1,52 +1,395 @@
-import { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
+import { Card } from "./components/ui/card";
+import { Button } from "./components/ui/button";
+import { Select } from "./components/ui/select";
+import { Textarea } from "./components/ui/textarea";
+import { Badge } from "./components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
+import { Brain, Zap, MessageSquare, Settings, Cpu, Network, Eye } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const Home = () => {
-  const helloWorldApi = async () => {
+function App() {
+  const [models, setModels] = useState({});
+  const [sessions, setSessions] = useState([]);
+  const [currentSession, setCurrentSession] = useState(null);
+  const [hostLLM, setHostLLM] = useState({ provider: 'openai', model_name: 'gpt-4o', display_name: 'GPT-4o' });
+  const [targetLLM, setTargetLLM] = useState({ provider: 'openai', model_name: 'gpt-4o-mini', display_name: 'GPT-4o Mini' });
+  const [protocol, setProtocol] = useState('mcp');
+  const [query, setQuery] = useState('');
+  const [result, setResult] = useState(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [activeTab, setActiveTab] = useState('setup');
+
+  const protocols = [
+    { value: 'mcp', label: 'MCP Protocol', desc: 'Structured JSON communication', icon: MessageSquare },
+    { value: 'gibberlink', label: 'GibberLink', desc: 'Compressed semantic encoding', icon: Zap },
+    { value: 'droidspeak', label: 'DroidSpeak', desc: 'Ultra-efficient binary protocol', icon: Cpu },
+    { value: 'natural', label: 'Natural Language', desc: 'Fallback natural communication', icon: Brain }
+  ];
+
+  useEffect(() => {
+    fetchModels();
+    fetchSessions();
+  }, []);
+
+  const fetchModels = async () => {
     try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
+      const response = await axios.get(`${API}/models`);
+      setModels(response.data);
+    } catch (error) {
+      console.error('Failed to fetch models:', error);
     }
   };
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+  const fetchSessions = async () => {
+    try {
+      const response = await axios.get(`${API}/sessions`);
+      setSessions(response.data);
+    } catch (error) {
+      console.error('Failed to fetch sessions:', error);
+    }
+  };
 
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
+  const createSession = async () => {
+    try {
+      const sessionData = {
+        host_llm: hostLLM,
+        target_llm: targetLLM,
+        protocol: protocol
+      };
+      
+      const response = await axios.post(`${API}/session`, sessionData);
+      setCurrentSession(response.data);
+      setSessions([...sessions, response.data]);
+      setActiveTab('communicate');
+    } catch (error) {
+      console.error('Failed to create session:', error);
+    }
+  };
+
+  const extractInformation = async () => {
+    if (!currentSession || !query.trim()) return;
+    
+    setIsExtracting(true);
+    try {
+      const response = await axios.post(`${API}/extract`, {
+        session_id: currentSession.id,
+        query: query.trim(),
+        protocol: protocol
+      });
+      
+      setResult(response.data);
+      setActiveTab('results');
+    } catch (error) {
+      console.error('Extraction failed:', error);
+      setResult({ error: 'Extraction failed. Please try again.' });
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const ModelSelector = ({ title, selectedModel, onModelChange, models }) => (
+    <Card className="p-6 backdrop-blur-sm bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700">
+      <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+        <Brain className="w-5 h-5 text-blue-400" />
+        {title}
+      </h3>
+      
+      <div className="space-y-4">
+        <div>
+          <label className="text-sm text-slate-300 mb-2 block">Provider</label>
+          <select 
+            className="w-full p-3 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-400 focus:outline-none"
+            value={selectedModel.provider}
+            onChange={(e) => {
+              const provider = e.target.value;
+              const firstModel = models[provider]?.[0];
+              if (firstModel) {
+                onModelChange({
+                  provider,
+                  model_name: firstModel.model_name,
+                  display_name: firstModel.display_name
+                });
+              }
+            }}
+          >
+            {Object.keys(models).map(provider => (
+              <option key={provider} value={provider}>
+                {provider.charAt(0).toUpperCase() + provider.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div>
+          <label className="text-sm text-slate-300 mb-2 block">Model</label>
+          <select
+            className="w-full p-3 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-400 focus:outline-none"
+            value={selectedModel.model_name}
+            onChange={(e) => {
+              const modelName = e.target.value;
+              const model = models[selectedModel.provider]?.find(m => m.model_name === modelName);
+              if (model) {
+                onModelChange({
+                  ...selectedModel,
+                  model_name: model.model_name,
+                  display_name: model.display_name
+                });
+              }
+            }}
+          >
+            {models[selectedModel.provider]?.map(model => (
+              <option key={model.model_name} value={model.model_name}>
+                {model.display_name}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <Badge className="bg-blue-900 text-blue-200 border-blue-700">
+          {selectedModel.display_name}
+        </Badge>
+      </div>
+    </Card>
   );
-};
 
-function App() {
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="container mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-4">
+            Neural Bridge
+          </h1>
+          <p className="text-xl text-slate-400 max-w-3xl mx-auto">
+            Advanced LLM-to-LLM Communication Hub with Multi-Protocol Information Extraction
+          </p>
+          <div className="flex items-center justify-center gap-4 mt-6">
+            <div className="flex items-center gap-2 text-green-400">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-sm">System Online</span>
+            </div>
+            <div className="flex items-center gap-2 text-blue-400">
+              <Network className="w-4 h-4" />
+              <span className="text-sm">{sessions.length} Active Sessions</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Interface */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 mb-8 bg-slate-800 border border-slate-700">
+            <TabsTrigger value="setup" className="data-[state=active]:bg-blue-600">
+              <Settings className="w-4 h-4 mr-2" />
+              Setup
+            </TabsTrigger>
+            <TabsTrigger value="communicate" className="data-[state=active]:bg-blue-600">
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Communicate
+            </TabsTrigger>
+            <TabsTrigger value="results" className="data-[state=active]:bg-blue-600">
+              <Eye className="w-4 h-4 mr-2" />
+              Results
+            </TabsTrigger>
+            <TabsTrigger value="monitor" className="data-[state=active]:bg-blue-600">
+              <Network className="w-4 h-4 mr-2" />
+              Monitor
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Setup Tab */}
+          <TabsContent value="setup" className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <ModelSelector
+                title="Host LLM (Information Extractor)"
+                selectedModel={hostLLM}
+                onModelChange={setHostLLM}
+                models={models}
+              />
+              <ModelSelector
+                title="Target LLM (Information Source)"
+                selectedModel={targetLLM}
+                onModelChange={setTargetLLM}
+                models={models}
+              />
+            </div>
+
+            {/* Protocol Selection */}
+            <Card className="p-6 backdrop-blur-sm bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700">
+              <h3 className="text-lg font-semibold text-white mb-6">Communication Protocol</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {protocols.map((p) => {
+                  const IconComponent = p.icon;
+                  return (
+                    <div
+                      key={p.value}
+                      onClick={() => setProtocol(p.value)}
+                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:scale-105 ${
+                        protocol === p.value
+                          ? 'border-blue-500 bg-blue-900/30'
+                          : 'border-slate-600 bg-slate-800/50 hover:border-slate-500'
+                      }`}
+                    >
+                      <IconComponent className={`w-6 h-6 mb-3 ${protocol === p.value ? 'text-blue-400' : 'text-slate-400'}`} />
+                      <h4 className={`font-semibold mb-2 ${protocol === p.value ? 'text-blue-300' : 'text-white'}`}>
+                        {p.label}
+                      </h4>
+                      <p className="text-sm text-slate-400">{p.desc}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            <div className="text-center">
+              <Button 
+                onClick={createSession}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 px-8 py-3 text-lg"
+                disabled={!Object.keys(models).length}
+              >
+                <Zap className="w-5 h-5 mr-2" />
+                Initialize Communication Bridge
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* Communication Tab */}
+          <TabsContent value="communicate" className="space-y-6">
+            {currentSession ? (
+              <div className="space-y-6">
+                <Card className="p-6 backdrop-blur-sm bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700">
+                  <h3 className="text-lg font-semibold text-white mb-4">Active Communication Session</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="text-slate-400">Host:</span>
+                      <p className="text-white">{currentSession.host_llm.display_name}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Target:</span>
+                      <p className="text-white">{currentSession.target_llm.display_name}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">Protocol:</span>
+                      <Badge className="ml-2 bg-blue-900 text-blue-200">{currentSession.protocol.toUpperCase()}</Badge>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="p-6 backdrop-blur-sm bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700">
+                  <h3 className="text-lg font-semibold text-white mb-4">Information Extraction Query</h3>
+                  <Textarea
+                    placeholder="Enter your information extraction query here... (e.g., 'What are your core capabilities and limitations?')"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    className="min-h-32 bg-slate-800 border-slate-600 text-white resize-none focus:border-blue-400"
+                  />
+                  <Button 
+                    onClick={extractInformation}
+                    disabled={!query.trim() || isExtracting}
+                    className="mt-4 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+                  >
+                    {isExtracting ? (
+                      <>
+                        <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Extracting...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="w-4 h-4 mr-2" />
+                        Extract Information
+                      </>
+                    )}
+                  </Button>
+                </Card>
+              </div>
+            ) : (
+              <Card className="p-12 text-center backdrop-blur-sm bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700">
+                <Brain className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-slate-400 mb-2">No Active Session</h3>
+                <p className="text-slate-500 mb-6">Create a communication session in the Setup tab to begin</p>
+                <Button onClick={() => setActiveTab('setup')} className="bg-blue-600 hover:bg-blue-700">
+                  Go to Setup
+                </Button>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Results Tab */}
+          <TabsContent value="results" className="space-y-6">
+            {result ? (
+              <div className="space-y-6">
+                <Card className="p-6 backdrop-blur-sm bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700">
+                  <h3 className="text-lg font-semibold text-white mb-4">Extraction Results</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-300 mb-2">Query:</h4>
+                      <p className="text-white bg-slate-800 p-3 rounded border border-slate-600">{result.query}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-300 mb-2">Target Response:</h4>
+                      <p className="text-white bg-slate-800 p-3 rounded border border-slate-600 whitespace-pre-wrap">{result.target_response}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-300 mb-2">Host Analysis:</h4>
+                      <p className="text-white bg-slate-800 p-3 rounded border border-slate-600 whitespace-pre-wrap">{result.host_analysis}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-300 mb-2">Protocol Used:</h4>
+                      <Badge className="bg-blue-900 text-blue-200">{result.protocol_used?.toUpperCase()}</Badge>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            ) : (
+              <Card className="p-12 text-center backdrop-blur-sm bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700">
+                <Eye className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-slate-400 mb-2">No Results Yet</h3>
+                <p className="text-slate-500">Run an information extraction to see results here</p>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Monitor Tab */}
+          <TabsContent value="monitor" className="space-y-6">
+            <Card className="p-6 backdrop-blur-sm bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700">
+              <h3 className="text-lg font-semibold text-white mb-4">Session History</h3>
+              {sessions.length > 0 ? (
+                <div className="space-y-3">
+                  {sessions.map((session) => (
+                    <div key={session.id} className="p-4 bg-slate-800 rounded border border-slate-600">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-white font-medium">
+                            {session.host_llm.display_name} ↔ {session.target_llm.display_name}
+                          </p>
+                          <p className="text-slate-400 text-sm">
+                            Protocol: {session.protocol.toUpperCase()} | Created: {new Date(session.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                        <Badge 
+                          className={`${
+                            session.status === 'active' 
+                              ? 'bg-green-900 text-green-200' 
+                              : 'bg-slate-900 text-slate-200'
+                          }`}
+                        >
+                          {session.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-slate-500 text-center py-8">No sessions created yet</p>
+              )}
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

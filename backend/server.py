@@ -66,6 +66,7 @@ class SessionCreate(BaseModel):
     host_llm: LLMModel
     target_llm: LLMModel
     protocol: str = "mcp"
+    api_keys: Optional[Dict[str, str]] = {}
 
 class ExtractionQuery(BaseModel):
     session_id: str

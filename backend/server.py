@@ -94,12 +94,21 @@ AVAILABLE_MODELS = {
 
 class LLMCommunicator:
     def __init__(self):
-        self.api_key = os.environ.get('OPENAI_API_KEY')
+        self.openai_key = os.environ.get('OPENAI_API_KEY')
+        if not self.openai_key:
+            logger.warning("OpenAI API key not found")
     
     async def create_llm_instance(self, llm_model: LLMModel, session_id: str, system_message: str):
         """Create a new LLM chat instance"""
+        # Only support OpenAI for now since we only have OpenAI key
+        if llm_model.provider != "openai":
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Currently only OpenAI models are supported. Please select an OpenAI model instead of {llm_model.provider}."
+            )
+            
         chat = LlmChat(
-            api_key=self.api_key,
+            api_key=self.openai_key,
             session_id=session_id,
             system_message=system_message
         ).with_model(llm_model.provider, llm_model.model_name)

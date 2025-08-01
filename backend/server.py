@@ -96,25 +96,44 @@ AVAILABLE_MODELS = {
 
 class LLMCommunicator:
     def __init__(self):
-        self.openai_key = os.environ.get('OPENAI_API_KEY')
-        if not self.openai_key:
-            logger.warning("OpenAI API key not found")
+        self.default_openai_key = os.environ.get('OPENAI_API_KEY')
+        if not self.default_openai_key:
+            logger.warning("Default OpenAI API key not found")
     
-    async def create_llm_instance(self, llm_model: LLMModel, session_id: str, system_message: str):
+    def get_api_key(self, provider: str, session_api_keys: Dict[str, str] = None) -> str:
+        """Get API key for a specific provider, prioritizing session keys over defaults"""
+        if session_api_keys and session_api_keys.get(provider):
+            return session_api_keys[provider]
+        
+        # Fall back to environment defaults
+        if provider == "openai" and self.default_openai_key:
+            return self.default_openai_key
+        
+        return None
+    
+    async def create_llm_instance(self, llm_model: LLMModel, session_id: str, system_message: str, api_keys: Dict[str, str] = None):
         """Create a new LLM chat instance"""
-        # Only support OpenAI for now since we only have OpenAI key
-        if llm_model.provider != "openai":
+        api_key = self.get_api_key(llm_model.provider, api_keys)
+        
+        if not api_key:
             raise HTTPException(
                 status_code=400, 
-                detail=f"Currently only OpenAI models are supported. Please select an OpenAI model instead of {llm_model.provider}."
+                detail=f"No API key found for {llm_model.provider}. Please provide a valid API key."
             )
             
-        chat = LlmChat(
-            api_key=self.openai_key,
-            session_id=session_id,
-            system_message=system_message
-        ).with_model(llm_model.provider, llm_model.model_name)
-        return chat
+        try:
+            chat = LlmChat(
+                api_key=api_key,
+                session_id=session_id,
+                system_message=system_message
+            ).with_model(llm_model.provider, llm_model.model_name)
+            return chat
+        except Exception as e:
+            logger.error(f"Failed to create LLM instance: {str(e)}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to initialize {llm_model.provider} model. Please check your API key."
+            )
     
     async def send_message_mcp(self, chat_instance, content: str):
         """Send message using MCP protocol (structured JSON)"""

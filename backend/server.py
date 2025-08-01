@@ -234,6 +234,10 @@ async def extract_information(extraction: ExtractionQuery):
     protocol = extraction.protocol or session_obj.protocol
     
     try:
+        # Check if we have valid API key
+        if not os.environ.get('OPENAI_API_KEY'):
+            raise HTTPException(status_code=400, detail="OpenAI API key not configured")
+        
         # Extract information
         result = await llm_comm.extract_information(
             host_llm=session_obj.host_llm,
@@ -252,8 +256,22 @@ async def extract_information(extraction: ExtractionQuery):
         return result
         
     except Exception as e:
-        logger.error(f"Extraction failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
+        error_message = str(e)
+        logger.error(f"Extraction failed: {error_message}")
+        
+        # Provide more specific error messages
+        if "quota" in error_message.lower() or "rate limit" in error_message.lower():
+            raise HTTPException(
+                status_code=429, 
+                detail="API quota exceeded. Please check your OpenAI billing plan or try again later."
+            )
+        elif "authentication" in error_message.lower() or "api key" in error_message.lower():
+            raise HTTPException(
+                status_code=401, 
+                detail="API authentication failed. Please check your API keys."
+            )
+        else:
+            raise HTTPException(status_code=500, detail=f"Extraction failed: {error_message}")
 
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):

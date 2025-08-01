@@ -24,6 +24,14 @@ function App() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('setup');
+  
+  // API Keys state
+  const [apiKeys, setApiKeys] = useState({
+    openai: '',
+    anthropic: '',
+    gemini: ''
+  });
+  const [showApiKeys, setShowApiKeys] = useState(false);
 
   const protocols = [
     { value: 'mcp', label: 'MCP Protocol', desc: 'Structured JSON communication', icon: MessageSquare },

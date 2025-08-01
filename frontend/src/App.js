@@ -67,10 +67,30 @@ function App() {
   const createSession = async () => {
     try {
       setError(null);
+      
+      // Check if required API keys are provided
+      const hostKey = apiKeys[hostLLM.provider];
+      const targetKey = apiKeys[targetLLM.provider];
+      
+      if (!hostKey && hostLLM.provider !== 'openai') {
+        setError(`Please provide ${hostLLM.provider.charAt(0).toUpperCase() + hostLLM.provider.slice(1)} API key for the host LLM`);
+        return;
+      }
+      
+      if (!targetKey && targetLLM.provider !== 'openai') {
+        setError(`Please provide ${targetLLM.provider.charAt(0).toUpperCase() + targetLLM.provider.slice(1)} API key for the target LLM`);
+        return;
+      }
+      
       const sessionData = {
         host_llm: hostLLM,
         target_llm: targetLLM,
-        protocol: protocol
+        protocol: protocol,
+        api_keys: {
+          openai: apiKeys.openai,
+          anthropic: apiKeys.anthropic,
+          gemini: apiKeys.gemini
+        }
       };
       
       const response = await axios.post(`${API}/session`, sessionData);
@@ -79,7 +99,7 @@ function App() {
       setActiveTab('communicate');
     } catch (error) {
       console.error('Failed to create session:', error);
-      setError('Failed to create session');
+      setError(error.response?.data?.detail || 'Failed to create session');
     }
   };
 

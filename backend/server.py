@@ -232,7 +232,7 @@ async def get_available_models():
     """Get all available LLM models"""
     return AVAILABLE_MODELS
 
-@api_router.post("/session", response_model=CommunicationSession)
+@api_router.post("/session", response_model=CommunicationSessionResponse)
 async def create_communication_session(session_data: SessionCreate):
     """Create a new LLM communication session"""
     # Clean and validate API keys (remove empty strings)
@@ -249,10 +249,17 @@ async def create_communication_session(session_data: SessionCreate):
     session_dict = session.dict()
     await db.communication_sessions.insert_one(session_dict)
     
-    # Don't return API keys in the response for security
-    response_session = session.dict()
-    response_session.pop('api_keys', None)
-    return CommunicationSession(**response_session)
+    # Return response without API keys for security
+    return CommunicationSessionResponse(
+        id=session.id,
+        host_llm=session.host_llm,
+        target_llm=session.target_llm,
+        protocol=session.protocol,
+        status=session.status,
+        created_at=session.created_at,
+        messages=session.messages,
+        extraction_results=session.extraction_results
+    )
 
 @api_router.get("/sessions", response_model=List[CommunicationSession])
 async def get_sessions():

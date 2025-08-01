@@ -313,19 +313,30 @@ function App() {
                 <Card className="p-6 backdrop-blur-sm bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700">
                   <h3 className="text-lg font-semibold text-white mb-4">Information Extraction Query</h3>
                   <Textarea
-                    placeholder="Enter your information extraction query here... (e.g., 'What are your core capabilities and limitations?')"
+                    placeholder='Try "demo" or "test" for a demonstration, or enter your own query (e.g., "What are your core capabilities and limitations?")'
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     className="min-h-32 bg-slate-800 border-slate-600 text-white resize-none focus:border-blue-400"
                   />
                   
-                  {/* OpenAI Only Warning */}
-                  <div className="mt-4 p-3 bg-amber-900/30 border border-amber-700 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-amber-400" />
-                      <p className="text-amber-200 text-sm">
-                        <strong>Note:</strong> Currently only OpenAI models are supported. Please ensure both Host and Target LLMs are set to OpenAI models.
-                      </p>
+                  {/* Demo and OpenAI Info */}
+                  <div className="mt-4 space-y-3">
+                    <div className="p-3 bg-green-900/30 border border-green-700 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-green-400" />
+                        <p className="text-green-200 text-sm">
+                          <strong>Demo Mode:</strong> Type "demo" or "test" in your query to see a fully functional demonstration of LLM-to-LLM communication!
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="p-3 bg-amber-900/30 border border-amber-700 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-400" />
+                        <p className="text-amber-200 text-sm">
+                          <strong>Live API:</strong> For real LLM communication, ensure both Host and Target are set to OpenAI models and you have sufficient API quota.
+                        </p>
+                      </div>
                     </div>
                   </div>
                   

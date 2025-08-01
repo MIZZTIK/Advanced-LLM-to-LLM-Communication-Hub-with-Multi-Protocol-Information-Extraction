@@ -399,6 +399,15 @@ function App() {
                 <Zap className="w-5 h-5 mr-2" />
                 Initialize Communication Bridge
               </Button>
+              
+              <div className="mt-4 text-center">
+                <p className="text-slate-400 text-sm">
+                  {!apiKeys.openai && !apiKeys.anthropic && !apiKeys.gemini 
+                    ? "💡 Demo mode available - try queries with 'demo' or 'test'" 
+                    : "✅ Custom API keys configured - full LLM communication enabled"
+                  }
+                </p>
+              </div>
             </div>
           </TabsContent>
 

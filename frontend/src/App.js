@@ -362,7 +362,21 @@ function App() {
 
           {/* Results Tab */}
           <TabsContent value="results" className="space-y-6">
-            {result ? (
+            {error ? (
+              <Card className="p-6 backdrop-blur-sm bg-gradient-to-br from-red-900/80 to-red-800/80 border-red-700">
+                <h3 className="text-lg font-semibold text-red-200 mb-4 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5" />
+                  Extraction Failed
+                </h3>
+                <p className="text-red-300">{error}</p>
+                <Button 
+                  onClick={() => setError(null)}
+                  className="mt-4 bg-red-700 hover:bg-red-600"
+                >
+                  Clear Error
+                </Button>
+              </Card>
+            ) : result ? (
               <div className="space-y-6">
                 <Card className="p-6 backdrop-blur-sm bg-gradient-to-br from-slate-900/80 to-slate-800/80 border-slate-700">
                   <h3 className="text-lg font-semibold text-white mb-4">Extraction Results</h3>

@@ -248,7 +248,12 @@ async def create_communication_session(session_data: SessionCreate):
 async def get_sessions():
     """Get all communication sessions"""
     sessions = await db.communication_sessions.find().to_list(100)
-    return [CommunicationSession(**session) for session in sessions]
+    # Remove API keys from responses for security
+    clean_sessions = []
+    for session in sessions:
+        session.pop('api_keys', None)
+        clean_sessions.append(CommunicationSession(**session))
+    return clean_sessions
 
 @api_router.get("/session/{session_id}", response_model=CommunicationSession)
 async def get_session(session_id: str):
@@ -256,6 +261,9 @@ async def get_session(session_id: str):
     session = await db.communication_sessions.find_one({"id": session_id})
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Remove API keys from response for security
+    session.pop('api_keys', None)
     return CommunicationSession(**session)
 
 @api_router.post("/extract")

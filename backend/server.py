@@ -43,6 +43,16 @@ class LLMModel(BaseModel):
     model_name: str
     display_name: str
 
+class CommunicationSessionResponse(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    host_llm: LLMModel
+    target_llm: LLMModel
+    protocol: str  # "mcp", "gibberlink", "droidspeak", "natural"
+    status: str = "active"  # "active", "completed", "failed"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    messages: List[Dict[str, Any]] = []
+    extraction_results: Dict[str, Any] = {}
+
 class CommunicationSession(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     host_llm: LLMModel

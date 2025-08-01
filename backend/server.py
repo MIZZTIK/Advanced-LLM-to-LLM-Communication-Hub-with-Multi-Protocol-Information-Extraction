@@ -173,16 +173,16 @@ class LLMCommunicator:
         response = await chat_instance.send_message(user_message)
         return response
     
-    async def extract_information(self, host_llm: LLMModel, target_llm: LLMModel, query: str, protocol: str, session_id: str):
+    async def extract_information(self, host_llm: LLMModel, target_llm: LLMModel, query: str, protocol: str, session_id: str, api_keys: Dict[str, str] = None):
         """Extract information from target LLM using specified protocol"""
         
         # Create system messages for different roles
         host_system = f"You are a Host LLM communicating with a Target LLM to extract information. Use {protocol} protocol for communication. Be systematic and thorough in your information extraction."
         target_system = f"You are a Target LLM. Respond to queries from the Host LLM using {protocol} protocol. Provide detailed and accurate information."
         
-        # Create LLM instances
-        host_chat = await self.create_llm_instance(host_llm, f"{session_id}_host", host_system)
-        target_chat = await self.create_llm_instance(target_llm, f"{session_id}_target", target_system)
+        # Create LLM instances with provided API keys
+        host_chat = await self.create_llm_instance(host_llm, f"{session_id}_host", host_system, api_keys)
+        target_chat = await self.create_llm_instance(target_llm, f"{session_id}_target", target_system, api_keys)
         
         # Send query based on protocol
         protocol_methods = {

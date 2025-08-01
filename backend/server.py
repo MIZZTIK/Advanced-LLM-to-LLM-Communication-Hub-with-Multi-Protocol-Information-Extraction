@@ -280,16 +280,24 @@ async def get_sessions():
         ))
     return clean_sessions
 
-@api_router.get("/session/{session_id}", response_model=CommunicationSession)
+@api_router.get("/session/{session_id}", response_model=CommunicationSessionResponse)
 async def get_session(session_id: str):
     """Get specific session details"""
     session = await db.communication_sessions.find_one({"id": session_id})
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    # Remove API keys from response for security
-    session.pop('api_keys', None)
-    return CommunicationSession(**session)
+    # Return response without API keys for security
+    return CommunicationSessionResponse(
+        id=session['id'],
+        host_llm=LLMModel(**session['host_llm']),
+        target_llm=LLMModel(**session['target_llm']),
+        protocol=session['protocol'],
+        status=session['status'],
+        created_at=session['created_at'],
+        messages=session.get('messages', []),
+        extraction_results=session.get('extraction_results', {})
+    )
 
 @api_router.post("/extract")
 async def extract_information(extraction: ExtractionQuery):

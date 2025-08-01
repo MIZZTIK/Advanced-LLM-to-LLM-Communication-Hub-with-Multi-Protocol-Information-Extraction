@@ -52,7 +52,7 @@ class CommunicationSession(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     messages: List[Dict[str, Any]] = []
     extraction_results: Dict[str, Any] = {}
-    api_keys: Optional[Dict[str, str]] = {}
+    api_keys: Optional[Dict[str, str]] = None
 
 class Message(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))

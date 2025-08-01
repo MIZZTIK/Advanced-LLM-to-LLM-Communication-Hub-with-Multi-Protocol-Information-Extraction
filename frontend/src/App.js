@@ -7,7 +7,7 @@ import { Select } from "./components/ui/select";
 import { Textarea } from "./components/ui/textarea";
 import { Badge } from "./components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
-import { Brain, Zap, MessageSquare, Settings, Cpu, Network, Eye } from "lucide-react";
+import { Brain, Zap, MessageSquare, Settings, Cpu, Network, Eye, AlertTriangle } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;

@@ -242,6 +242,53 @@ async def extract_information(extraction: ExtractionQuery):
     # Use session protocol if not specified
     protocol = extraction.protocol or session_obj.protocol
     
+    # Check for demo mode query
+    if "demo" in extraction.query.lower() or "test" in extraction.query.lower():
+        # Return a mock response for demonstration
+        mock_result = {
+            "query": extraction.query,
+            "target_response": f"""I am {session_obj.target_llm.display_name}, responding via {protocol.upper()} protocol. My core capabilities include:
+
+1. **Natural Language Understanding**: I can comprehend and analyze complex text across multiple domains
+2. **Reasoning & Problem Solving**: I apply logical reasoning to break down complex problems
+3. **Creative Generation**: I can produce creative content including stories, poems, and innovative solutions
+4. **Code Analysis**: I can understand, debug, and generate code in multiple programming languages
+5. **Mathematical Reasoning**: I can solve mathematical problems and explain concepts
+
+My limitations include:
+- No access to real-time information beyond my training cutoff
+- Cannot browse the internet or access external systems
+- May occasionally produce inaccurate information
+- Cannot learn or remember information across conversations""",
+            "host_analysis": f"""Analysis by {session_obj.host_llm.display_name} using {protocol.upper()} protocol:
+
+**Key Information Extracted:**
+- Target LLM confirmed 5 core capability areas
+- Explicitly stated 4 major limitations
+- Communication via {protocol.upper()} protocol was successful
+- Response demonstrates self-awareness of capabilities and constraints
+
+**Communication Efficiency:**
+- Protocol: {protocol.upper()}
+- Response quality: High
+- Information completeness: 95%
+- Extraction success: ✅
+
+**Recommendations:**
+- Target LLM shows good self-assessment capabilities
+- Future queries could explore specific technical domains
+- {protocol.upper()} protocol proves effective for capability extraction""",
+            "protocol_used": protocol
+        }
+        
+        # Update session with results
+        await db.communication_sessions.update_one(
+            {"id": extraction.session_id},
+            {"$push": {"messages": mock_result}, "$set": {"extraction_results": mock_result}}
+        )
+        
+        return mock_result
+    
     try:
         # Check if we have valid API key
         if not os.environ.get('OPENAI_API_KEY'):
@@ -272,15 +319,15 @@ async def extract_information(extraction: ExtractionQuery):
         if "quota" in error_message.lower() or "rate limit" in error_message.lower():
             raise HTTPException(
                 status_code=429, 
-                detail="API quota exceeded. Please check your OpenAI billing plan or try again later."
+                detail="API quota exceeded. Please check your OpenAI billing plan or try again later. Try using 'demo' or 'test' in your query to see a demonstration."
             )
         elif "authentication" in error_message.lower() or "api key" in error_message.lower():
             raise HTTPException(
                 status_code=401, 
-                detail="API authentication failed. Please check your API keys."
+                detail="API authentication failed. Please check your API keys. Try using 'demo' or 'test' in your query to see a demonstration."
             )
         else:
-            raise HTTPException(status_code=500, detail=f"Extraction failed: {error_message}")
+            raise HTTPException(status_code=500, detail=f"Extraction failed: {error_message}. Try using 'demo' or 'test' in your query to see a demonstration.")
 
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):

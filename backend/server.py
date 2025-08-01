@@ -261,15 +261,23 @@ async def create_communication_session(session_data: SessionCreate):
         extraction_results=session.extraction_results
     )
 
-@api_router.get("/sessions", response_model=List[CommunicationSession])
+@api_router.get("/sessions", response_model=List[CommunicationSessionResponse])
 async def get_sessions():
     """Get all communication sessions"""
     sessions = await db.communication_sessions.find().to_list(100)
     # Remove API keys from responses for security
     clean_sessions = []
     for session in sessions:
-        session.pop('api_keys', None)
-        clean_sessions.append(CommunicationSession(**session))
+        clean_sessions.append(CommunicationSessionResponse(
+            id=session['id'],
+            host_llm=LLMModel(**session['host_llm']),
+            target_llm=LLMModel(**session['target_llm']),
+            protocol=session['protocol'],
+            status=session['status'],
+            created_at=session['created_at'],
+            messages=session.get('messages', []),
+            extraction_results=session.get('extraction_results', {})
+        ))
     return clean_sessions
 
 @api_router.get("/session/{session_id}", response_model=CommunicationSession)

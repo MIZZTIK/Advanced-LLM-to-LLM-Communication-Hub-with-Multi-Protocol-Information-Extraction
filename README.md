@@ -2,14 +2,6 @@
 
 ## Quick Start
 
-### Option 1: Demo Mode (No API Keys Required)
-1. Open the application
-2. Click "Initialize Communication Bridge" (no setup needed)
-3. Enter query: `"demo - What are your core capabilities?"`
-4. Click "Extract Information"
-5. Watch the magic happen!
-
-### Option 2: With Your Own API Keys
 1. **Get API Keys** (choose one or more):
    - OpenAI: [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
    - Anthropic: [console.anthropic.com](https://console.anthropic.com)

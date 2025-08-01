@@ -1,5 +1,8 @@
 # Neural Bridge Usage Guide 🚀
 
+<img width="1040" height="928" alt="1" src="https://github.com/user-attachments/assets/a1eb9132-d747-4845-8904-28dfcce55416" />
+
+
 ## Quick Start
 
 1. **Get API Keys** (choose one or more):
